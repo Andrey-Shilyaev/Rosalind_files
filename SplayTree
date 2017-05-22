@@ -1,0 +1,115 @@
+class Node:
+
+    def __init__(self, key):
+        self.key = key
+        self.right = None
+        self.left = None
+        self.parent = None
+
+    def set_parent(self):
+        for child in (self.left, self.right):
+            if child is not None:
+                child.parent = self
+
+    def set_child(self, other):
+        if self.key < other.key:
+            other.left = self
+        else:
+            other.right = self
+
+class SplayTree:
+
+    def __init__(self):
+        self.root = None
+        self.prev_f_value = 0
+
+    def add_value(self, key):
+        if self.root is None:
+            self.root = Node(key)
+            return
+        print('adding %s before splay' % key)
+        self.prnt()
+        self.splay(key) 
+        print('adding %s after splay' % key)       
+        self.prnt()
+        r = self.root
+        if key != r.key:
+            n = Node(key)
+            if key < r.key:
+                n.left = r.left
+                r.left = None
+                n.right = r
+            else:
+                n.right = r.right
+                r.right = None
+                n.left = r
+            self.root = n
+            n.set_parent()
+        print('%s added!' % key)
+        self.prnt
+        
+        # После реализации Splay
+
+    def search(self, key):
+        cur_node = self.root
+        while cur_node:
+            if key == cur_node.key:
+                return cur_node
+            else:
+                if key < cur_node.key:
+                    next_node = cur_node.left
+                else:
+                    next_node = cur_node.right
+                if next_node is None:
+                    return cur_node
+                else:
+                    cur_node = next_node
+
+    def zig(self, n):
+        par = n.parent
+        if n.key < par.key:
+            par.left = n.right
+            n.right = par
+        else:
+            par.right = n.left
+            n.left = par
+        n.parent = par.parent
+        if n.parent is None:
+            self.root = n
+        else:
+            n.set_child(n.parent)
+        n.set_parent()
+        par.set_parent()     
+
+    def splay(self, key):
+        print('searching for %s' %key)
+        n = self.search(key)
+        print('founded %s' % n.key)
+        while n is not None and n.parent is not None:
+            f = n.parent
+            g = f.parent
+            if g is None:
+                x.zig(n)
+            else:
+                if (n.key < f.key) == (f.key < g.key):
+                    self.zig(f)
+                    self.zig(n)
+                else:
+                    self.zig(n)
+                    self.zig(n)
+    
+    def prnt(self):
+        print('-' * 30)
+        self.p(self.root)
+
+    def p(self, v, shift = 0, r_c_l = '->'):
+        if v is not None:
+            self.p(v.right, shift + 2, '┌')
+            print('  ' * shift + r_c_l + str(v.key))
+            self.p(v.left, shift + 2, '└')
+                               
+x = SplayTree()
+for val in [6, 2, 9, 1, 4, 3, 8, 11]: #, 10, 20, 15, 21]:
+    x.add_value(val)
+    x.prnt()
+
