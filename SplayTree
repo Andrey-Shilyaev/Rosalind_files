@@ -1,3 +1,6 @@
+def f(val, pr_v):
+    return (val + pr_v) % 1000000001
+
 class Node:
 
     def __init__(self, key):
@@ -5,6 +8,7 @@ class Node:
         self.right = None
         self.left = None
         self.parent = None
+        self.sum = key
 
     def set_parent(self):
         for child in (self.left, self.right):
@@ -17,39 +21,62 @@ class Node:
         else:
             other.right = self
 
+    def child_sum(self):
+        result = 0
+        if self.left is not None:
+            result += self.left.sum
+        if self.right is not None:
+            result += self.right.sum
+        return result
+
 class SplayTree:
 
     def __init__(self):
         self.root = None
         self.prev_f_value = 0
 
+    def action(self):
+        command, *args = input().split()
+        args = [f(a, self.prev_f_value) for a in map(int, args)]
+        if command == '+':
+            self.add_value(args[0])
+        elif command == '-':
+            self.remove_val(args[0])
+        elif command == '?':
+            if self.find(args[0]):
+                print('Found')
+            else:
+                print('Not found')
+        elif command == 's':
+            print(self.calc_sum(*args))
+    
     def add_value(self, key):
         if self.root is None:
             self.root = Node(key)
             return
-        print('adding %s before splay' % key)
-        self.prnt()
-        self.splay(key) 
-        print('adding %s after splay' % key)       
-        self.prnt()
-        r = self.root
-        if key != r.key:
-            n = Node(key)
-            if key < r.key:
-                n.left = r.left
-                r.left = None
-                n.right = r
-            else:
-                n.right = r.right
-                r.right = None
-                n.left = r
-            self.root = n
+        # Инсерт по лекции
+        n = self.search(key)
+        if key != n.key:
+            new_node = Node(key)
+            new_node.set_child(n)
             n.set_parent()
-        print('%s added!' % key)
-        self.prnt
-        
-        # После реализации Splay
+        self.splay(key)
 
+    def remove_val(self, key):
+        self.splay(key)
+        if self.root is not None and key == self.root.key:
+            left, right = self.split(key)            
+            right.root = right.root.right
+            if right.root is not None:
+                right.root.parent = None
+            left.merge(right)
+            self.root = left.root
+            self.calc_head()
+                
+    def calc_head(self):
+        if self.root is not None:
+            self.root.sum = self.root.child_sum() + self.root.key
+        
     def search(self, key):
         cur_node = self.root
         while cur_node:
@@ -67,29 +94,29 @@ class SplayTree:
 
     def zig(self, n):
         par = n.parent
+        n.sum = par.child_sum() + par.key
         if n.key < par.key:
             par.left = n.right
             n.right = par
         else:
             par.right = n.left
-            n.left = par
+            n.left = par        
         n.parent = par.parent
         if n.parent is None:
             self.root = n
         else:
             n.set_child(n.parent)
         n.set_parent()
-        par.set_parent()     
+        par.set_parent() 
+        par.sum = par.child_sum() + par.key    
 
     def splay(self, key):
-        print('searching for %s' %key)
         n = self.search(key)
-        print('founded %s' % n.key)
         while n is not None and n.parent is not None:
             f = n.parent
             g = f.parent
             if g is None:
-                x.zig(n)
+                self.zig(n)
             else:
                 if (n.key < f.key) == (f.key < g.key):
                     self.zig(f)
@@ -97,7 +124,72 @@ class SplayTree:
                 else:
                     self.zig(n)
                     self.zig(n)
-    
+
+    def find(self, key):
+        self.splay(key)
+        if self.root is None or key != self.root.key:
+            return False
+        else:
+            return True
+        
+    def split(self, key):
+        left_subtree = SplayTree()
+        right_subtree = SplayTree()
+        self.splay(key)
+        if self.root is not None:
+            if key <= self.root.key:
+                right_subtree.root = self.root
+                left_subtree.root = self.root.left                
+                right_subtree.root.left = None
+                if left_subtree.root is not None:
+                    left_subtree.root.parent = None
+            else:                
+                left_subtree.root = self.root
+                right_subtree.root = self.root.right
+                left_subtree.root.right = None
+                if right_subtree.root is not None:
+                    right_subtree.root.parent = None
+            left_subtree.calc_head()
+            right_subtree.calc_head()
+        return left_subtree, right_subtree
+
+    def max_node(self):
+        n = self.root
+        if n is not None:
+            while n.right is not None:
+                n = n.right
+        return n
+
+    def merge(self, other):
+        max_n = self.max_node()
+        if max_n is None:
+            self.root = other.root
+        else:
+            self.splay(max_n.key)
+            self.root.right = other.root
+            self.root.set_parent()
+        self.calc_head()
+            
+    def top_val(self):
+        if self.root is None:
+            return 0, 0
+        else:
+            return self.root.key, self.root.sum
+
+    def calc_sum(self, l, r):
+        left, m = self.split(l)
+        mid, right = m.split(r)
+        m_k, m_s = mid.top_val()
+        r_k, r_s = right.top_val()
+        result = m_s
+        if r_k == r:
+            result += r_k
+        mid.merge(right)
+        left.merge(mid)
+        self.root = left.root
+        self.prev_f_value = result
+        return result
+        
     def prnt(self):
         print('-' * 30)
         self.p(self.root)
@@ -105,11 +197,9 @@ class SplayTree:
     def p(self, v, shift = 0, r_c_l = '->'):
         if v is not None:
             self.p(v.right, shift + 2, '┌')
-            print('  ' * shift + r_c_l + str(v.key))
+            print('  ' * shift + "{}{}(Батя - {}, сумма в узле - {})".format(r_c_l, str(v.key), v.parent.key if v.parent else None, v.sum))
             self.p(v.left, shift + 2, '└')
                                
 x = SplayTree()
-for val in [6, 2, 9, 1, 4, 3, 8, 11]: #, 10, 20, 15, 21]:
-    x.add_value(val)
-    x.prnt()
-
+for cntr in range(int(input())):
+    x.action()
